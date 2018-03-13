@@ -171,6 +171,29 @@
         "redirect"
       ]
     },
+    "Crypto" : {
+        "check_location": {
+            "request": "true",
+            "response": "false"
+        },
+        "detail" : "Possible use of cryptography in <b>$param$</b>",
+        "enabled" : "true",
+        "level" : "information",
+        "name" : "Crypto",
+        "params" : [
+            "key",
+            "crypt",
+            "padding",
+            "alg",
+            "enc",
+            "AES",
+            "CBC",
+            "ECB",
+            "padding",
+            "x509",
+            "x5t"
+        ]
+    },
     "Debug & Logic Parameters": {
       "check_location": {
         "request": true,
