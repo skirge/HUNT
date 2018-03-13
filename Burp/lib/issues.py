@@ -1,5 +1,8 @@
 import json
 import re
+import binascii
+import base64
+import sys
 import os
 import urllib2
 import urlparse
@@ -51,9 +54,28 @@ class Issues:
     def get_scanner_issues(self):
         return self.scanner_issues
 
+    def check_json_keys(self, vuln_params, parameter, js):
+        if isinstance(js, dict):
+            for key in js.keys():
+                self.check_vuln_params(vuln_params, key, parameter)
+                self.check_json_keys(vuln_params, parameter, js[key])
+        elif isinstance(js, unicode) or isinstance(js, str):
+                self.check_vuln_params(vuln_params,js,parameter)
+        elif isinstance(js, list):
+            for item in js:
+                self.check_json_keys(vuln_params, parameter, item)
+        elif isinstance(js, int):
+            pass
+        elif isinstance(js, float):
+            pass
+        else:
+            raise ValueError("unsupported value type in json %s " % (js.__class__.__name__))
+
     def check_parameters(self, helpers, parameters):
         vuln_params = []
 
+        # parameter can be a json (body) or parameter value can be a json
+        # parameter can  be a xml (body) or parameter value can be a xml
         for parameter in parameters:
             # Make sure that the parameter is not from the cookies
             # https://portswigger.net/burp/extender/api/constant-values.html#burp.IParameter
@@ -65,6 +87,18 @@ class Issues:
                 parameter_decoded = helpers.urlDecode(parameter_decoded)
 
                 self.check_vuln_params(vuln_params, parameter_decoded, parameter)
+            value = parameter.getValue()
+
+            try:
+                print("Try to parse as JSON")
+                js = json.loads(value)
+                print("JSON loaded")
+                self.check_json_keys(vuln_params, parameter, js)
+            except ValueError as e:
+                #raise e
+                pass
+            except:
+                raise
 
         return vuln_params
 
@@ -72,13 +106,76 @@ class Issues:
         for issue in self.issues:
             vuln_name = issue["name"]
             vuln_param = issue["param"]
-            is_vuln_found = re.search(vuln_param, parameter_decoded, re.IGNORECASE)
 
-            if is_vuln_found:
-                self.vuln_param_add(vuln_params, vuln_name, vuln_param, parameter_decoded, parameter)
+            is_vuln_found_in_name = self.check_if_matches(vuln_param, parameter_decoded)
+            is_vuln_found_in_value = self.check_if_matches(vuln_param, parameter.getValue())
+
+            if is_vuln_found_in_name or is_vuln_found_in_value:
+                self.vuln_param_add(vuln_params, vuln_name, vuln_param, parameter_decoded, \
+                                        parameter if is_vuln_found_in_name else parameter.getValue())
                 #self.vuln_param_found(vuln_params, vuln_name, vuln_param, parameter_decoded, parameter)
             else:
                 continue
+
+    def base64_decode(self, input):
+        rem = len(input) % 4
+        if rem > 0:
+            input += b'=' * (4 - rem)
+        return base64.b64decode(input)
+
+    def base64url_decode(self, input):
+        rem = len(input) % 4
+        if rem > 0:
+            input += b'=' * (4 - rem)
+        return base64.urlsafe_b64decode(input)
+
+    def check_if_matches(self, pattern, value):
+        found_plain = found_base64 = found_base64url = found_hex = found_json = found_url = None
+
+        try:
+            found_plain = re.search(pattern, value, re.IGNORECASE | re.MULTILINE)
+        except:
+            pass
+
+        try:
+            found_url = re.search(pattern, helpers.urlDecode(value), re.IGNORECASE | re.MULTILINE)
+        except:
+            pass
+
+        try:
+            # hack to deal with strings containing invalid base64 like JWT
+            values = re.split(r'[^A-Za-z0-9+/=]', value)
+            for v in values:
+                found_base64 = re.search(pattern, self.base64_decode(v), re.IGNORECASE | re.MULTILINE)
+                if found_base64:
+                    break
+        except:
+            pass
+
+        try:
+            # hack to deal with strings containing invalid base64 like JWT
+            value = re.split(r'[^A-Za-z0-9+/=_]', value)
+            for v in values:
+                found_base64url = re.search(pattern, self.base64url_decode(v), re.IGNORECASE | re.MULTILINE)
+        except:
+            pass
+
+        try:
+            found_hex = re.search(pattern, binascii.unhexlify(value), re.IGNORECASE | re.MULTILINE)
+        except:
+            pass
+
+        try:
+            found_json = re.search(pattern, str(value).decode(), re.IGNORECASE | re.MULTILINE)
+        except:
+            pass
+
+        return found_plain is not None or \
+            found_url is not None or \
+            found_base64 is not None or \
+            found_base64url is not None or \
+            found_hex is not None or \
+            found_json is not None
 
     def vuln_param_found(self, vuln_params, vuln_name, vuln_param, parameter_decoded, parameter):
         is_same_vuln_name = vuln_param == parameter_decoded
@@ -211,5 +308,3 @@ class Issues:
             self.total_count[issue_name] -= 1
         else:
             self.total_count[issue_name] += 1
-
-
