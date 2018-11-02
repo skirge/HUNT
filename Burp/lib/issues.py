@@ -98,6 +98,7 @@ class Issues:
                 #raise e
                 pass
             except:
+                # TODO
                 raise
 
         return vuln_params
@@ -154,9 +155,11 @@ class Issues:
 
         try:
             # hack to deal with strings containing invalid base64 like JWT
-            value = re.split(r'[^A-Za-z0-9+/=_]', value)
+            value = re.split(r'[^A-Za-z0-9_-]', value)
             for v in values:
                 found_base64url = re.search(pattern, self.base64url_decode(v), re.IGNORECASE | re.MULTILINE)
+                if found_base64url:
+                    break
         except:
             pass
 
@@ -166,7 +169,7 @@ class Issues:
             pass
 
         try:
-            found_json = re.search(pattern, str(value).decode(), re.IGNORECASE | re.MULTILINE)
+            found_json = re.search(pattern, value.decode("unicode_escape"), re.IGNORECASE | re.MULTILINE)
         except:
             pass
 
