@@ -9,9 +9,15 @@ class SettingsAction(ActionListener):
         self.scanner_panes = scanner_panes
 
     def actionPerformed(self, e):
+        is_clear = str(e.getActionCommand()) == "clear"
+
+        if is_clear:
+            self.scanner_panes.getTopComponent().getViewport().getView().getModel().clear()
+
         file_chooser = JFileChooser()
         is_load_file = str(e.getActionCommand()) == "load"
         is_save_file = str(e.getActionCommand()) == "save"
+
 
         if is_load_file:
             file_chooser.setDialogTitle("Load JSON File")

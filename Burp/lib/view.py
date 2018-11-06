@@ -169,10 +169,14 @@ class View:
         save_file_button = JButton("Save JSON File")
         save_file_button.setActionCommand("save")
         save_file_button.addActionListener(SettingsAction(self, save_file_button, self.scanner_panes))
+        clear_issues_button = JButton("Clear all issues")
+        clear_issues_button.setActionCommand("clear")
+        clear_issues_button.addActionListener(SettingsAction(self,clear_issues_button,self.vuln_tree))
 
         horizontal_group1 = layout.createParallelGroup(GroupLayout.Alignment.LEADING)
         horizontal_group1.addComponent(load_file_button)
         horizontal_group1.addComponent(save_file_button)
+        horizontal_group1.addComponent(clear_issues_button)
 
         horizontal_group = layout.createSequentialGroup()
         horizontal_group.addGroup(horizontal_group1)

@@ -183,6 +183,12 @@ class Issues:
     def vuln_param_found(self, vuln_params, vuln_name, vuln_param, parameter_decoded, parameter):
         is_same_vuln_name = vuln_param == parameter_decoded
 
+        if parameter_decoded in self.json["blacklist"]:
+            return
+
+        if parameter_decoded.startswith("j_idt") and vuln_param == "id":
+            return
+
         if is_same_vuln_name:
             self.vuln_param_add(vuln_params, vuln_name, vuln_param, parameter_decoded, parameter)
         else:
@@ -192,10 +198,6 @@ class Issues:
         # Put try catch
         url = "http://api.pearson.com/v2/dictionaries/ldoce5/entries?headword=" + parameter_decoded
         response = urllib2.urlopen(url)
-
-        # Wait a second for response to come back
-        Thread.sleep(1000)
-
         data = json.load(response)
 
         # Checks an English dictionary if parameter is a real word. If it isn't, add it.
